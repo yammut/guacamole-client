@@ -690,6 +690,9 @@ END
 ##
 start_guacamole() {
 
+    # Turn on the Remote IP Valve
+    sed -i 's|^\(\(\s\)\+\)</Host>|\1\2\2<Valve className="org.apache.catalina.valves.RemoteIpValve"\n\1\2\2\1\2internalProxies="172.16.2.2" />\n\n\1</Host>|' /usr/local/tomcat/conf/server.xml
+
     # Install webapp
     rm -Rf /usr/local/tomcat/webapps/${WEBAPP_CONTEXT:-guacamole}
     ln -sf /opt/guacamole/guacamole.war /usr/local/tomcat/webapps/${WEBAPP_CONTEXT:-guacamole}.war
