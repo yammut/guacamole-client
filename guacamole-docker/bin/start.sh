@@ -761,6 +761,9 @@ END
     exit 1;
 fi
 
+# Allow overriding guacamole.properties with environment variables
+set_property "enable-environment-properties" "true"
+
 # Update config file
 set_property "guacd-hostname" "$GUACD_HOSTNAME"
 set_property "guacd-port"     "$GUACD_PORT"
