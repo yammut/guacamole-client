@@ -167,6 +167,16 @@ angular.module('client').factory('ManagedClient', ['$rootScope', '$injector',
         });
 
         /**
+         * The current state of all parameters requested by the server via
+         * "required" instructions, where each object key is the name of a
+         * requested parameter and each value is the current value entered by
+         * the user or null if no parameters are currently being requested.
+         *
+         * @type Object.<String, String>
+         */
+        this.requiredParameters = null;
+
+        /**
          * All uploaded files. As files are uploaded, their progress can be
          * observed through the elements of this array. It is intended that
          * this array be manipulated externally as needed.
@@ -192,6 +202,15 @@ angular.module('client').factory('ManagedClient', ['$rootScope', '$injector',
          * @type Object.<String, ManagedShareLink>
          */
         this.shareLinks = template.shareLinks || {};
+
+        /**
+         * The number of simultaneous touch contacts supported by the remote
+         * desktop. Unless explicitly declared otherwise by the remote desktop
+         * after connecting, this will be 0 (multi-touch unsupported).
+         *
+         * @type Number
+         */
+        this.multiTouchSupport = template.multiTouchSupport || 0;
 
         /**
          * The current state of the Guacamole client (idle, connecting,
@@ -376,7 +395,16 @@ angular.module('client').factory('ManagedClient', ['$rootScope', '$injector',
                     status.code);
             });
         };
-        
+
+        // Pull protocol-specific information from tunnel once tunnel UUID is
+        // known
+        tunnel.onuuid = function tunnelAssignedUUID(uuid) {
+            tunnelService.getProtocol(uuid).then(function protocolRetrieved(protocol) {
+                managedClient.protocol = protocol.name;
+                managedClient.forms = protocol.connectionForms;
+            }, requestService.WARN);
+        };
+
         // Update connection state as tunnel state changes
         tunnel.onstatechange = function tunnelStateChanged(state) {
             $rootScope.$evalAsync(function updateTunnelState() {
@@ -559,6 +587,11 @@ angular.module('client').factory('ManagedClient', ['$rootScope', '$injector',
 
         };
 
+        // Update level of multi-touch support when known
+        client.onmultitouch = function multiTouchSupportDeclared(layer, touches) {
+            managedClient.multiTouchSupport = touches;
+        };
+
         // Update title when a "name" instruction is received
         client.onname = function clientNameReceived(name) {
             $rootScope.$apply(function updateClientTitle() {
@@ -578,6 +611,16 @@ angular.module('client').factory('ManagedClient', ['$rootScope', '$injector',
             });
         };
 
+        // Handle any received prompts
+        client.onrequired = function onrequired(parameters) {
+            $rootScope.$apply(function promptUser() {
+                managedClient.requiredParameters = {};
+                angular.forEach(parameters, function populateParameter(name) {
+                    managedClient.requiredParameters[name] = '';
+                });
+            });
+        };
+
         // Manage the client display
         managedClient.managedDisplay = ManagedDisplay.getInstance(client.getDisplay());
 
@@ -592,14 +635,9 @@ angular.module('client').factory('ManagedClient', ['$rootScope', '$injector',
 
         // If using a connection, pull connection name and protocol information
         if (clientIdentifier.type === ClientIdentifier.Types.CONNECTION) {
-            $q.all({
-                connection : connectionService.getConnection(clientIdentifier.dataSource, clientIdentifier.id),
-                protocols  : schemaService.getProtocols(clientIdentifier.dataSource)
-            })
-            .then(function dataRetrieved(values) {
-                managedClient.name = managedClient.title = values.connection.name;
-                managedClient.protocol = values.connection.protocol;
-                managedClient.forms = values.protocols[values.connection.protocol].connectionForms;
+            connectionService.getConnection(clientIdentifier.dataSource, clientIdentifier.id)
+            .then(function connectionRetrieved(connection) {
+                managedClient.name = managedClient.title = connection.name;
             }, requestService.WARN);
         }
         
@@ -620,14 +658,9 @@ angular.module('client').factory('ManagedClient', ['$rootScope', '$injector',
                 // Attempt to retrieve connection details only if the
                 // underlying connection is known
                 if (activeConnection.connectionIdentifier) {
-                    $q.all({
-                        connection : connectionService.getConnection(clientIdentifier.dataSource, activeConnection.connectionIdentifier),
-                        protocols  : schemaService.getProtocols(clientIdentifier.dataSource)
-                    })
-                    .then(function dataRetrieved(values) {
-                        managedClient.name = managedClient.title = values.connection.name;
-                        managedClient.protocol = values.connection.protocol;
-                        managedClient.forms = values.protocols[values.connection.protocol].connectionForms;
+                    connectionService.getConnection(clientIdentifier.dataSource, activeConnection.connectionIdentifier)
+                    .then(function connectionRetrieved(connection) {
+                        managedClient.name = managedClient.title = connection.name;
                     }, requestService.WARN);
                 }
 
@@ -734,6 +767,29 @@ angular.module('client').factory('ManagedClient', ['$rootScope', '$injector',
         var managedArgument = managedClient.arguments[name];
         if (managedArgument && ManagedArgument.setValue(managedArgument, value))
             delete managedClient.arguments[name];
+    };
+
+    /**
+     * Sends the given connection parameter values using "argv" streams,
+     * updating the behavior of the connection in real-time if the server is
+     * expecting or requiring these parameters.
+     *
+     * @param {ManagedClient} managedClient
+     *     The ManagedClient instance associated with the active connection
+     *     being modified.
+     *
+     * @param {Object.<String, String>} values
+     *     The set of values to attempt to assign to corresponding connection
+     *     parameters, where each object key is the connection parameter being
+     *     set.
+     */
+    ManagedClient.sendArguments = function sendArguments(managedClient, values) {
+        angular.forEach(values, function sendArgument(value, name) {
+            var stream = managedClient.client.createArgumentValueStream("text/plain", name);
+            var writer = new Guacamole.StringWriter(stream);
+            writer.sendText(value);
+            writer.sendEnd();
+        });
     };
 
     /**

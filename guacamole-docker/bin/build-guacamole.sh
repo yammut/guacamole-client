@@ -60,6 +60,11 @@ mkdir -p "$DESTINATION"
 
 cd "$BUILD_DIR"
 
+# Required for build leveraging PhantomJS for unit testing (without this, the
+# build fails with "libssl_conf.so: cannot open shared object file: No such
+# file or directory")
+export OPENSSL_CONF=/etc/ssl
+
 if [ -z "$BUILD_PROFILE" ]; then
     mvn package
 else
@@ -184,3 +189,11 @@ if [ -f extensions/guacamole-auth-cas/target/*.tar.gz ]; then
     "*.jar"
 fi
 
+#
+# Copy json auth extension if it was built
+#
+
+if [ -f extensions/guacamole-auth-json/target/guacamole-auth-json*.jar ]; then
+    mkdir -p "$DESTINATION/json"
+    cp extensions/guacamole-auth-json/target/guacamole-auth-json*.jar "$DESTINATION/json"
+fi

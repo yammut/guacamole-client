@@ -54,7 +54,9 @@
     "CLIENT" : {
 
         "ACTION_ACKNOWLEDGE"               : "@:APP.ACTION_ACKNOWLEDGE",
+        "ACTION_CANCEL"                    : "@:APP.ACTION_CANCEL",
         "ACTION_CLEAR_COMPLETED_TRANSFERS" : "Clear",
+        "ACTION_CONTINUE"                  : "@:APP.ACTION_CONTINUE",
         "ACTION_DISCONNECT"                : "Disconnect",
         "ACTION_LOGOUT"                    : "@:APP.ACTION_LOGOUT",
         "ACTION_NAVIGATE_BACK"             : "@:APP.ACTION_NAVIGATE_BACK",
@@ -392,6 +394,7 @@
         "FIELD_HEADER_CONTAINER"       : "Container name:",
         "FIELD_HEADER_CREATE_RECORDING_PATH"  : "Automatically create recording path:",
         "FIELD_HEADER_CREATE_TYPESCRIPT_PATH" : "Automatically create typescript path:",
+        "FIELD_HEADER_EXEC_COMMAND"    : "Command (exec):",
         "FIELD_HEADER_FONT_NAME"       : "Font name:",
         "FIELD_HEADER_FONT_SIZE"       : "Font size:",
         "FIELD_HEADER_HOSTNAME"        : "Hostname:",
@@ -478,6 +481,7 @@
         "FIELD_HEADER_ENABLE_PRINTING"            : "Enable printing:",
         "FIELD_HEADER_ENABLE_SFTP"     : "Enable SFTP:",
         "FIELD_HEADER_ENABLE_THEMING"             : "Enable theming:",
+        "FIELD_HEADER_ENABLE_TOUCH"               : "Enable multi-touch:",
         "FIELD_HEADER_ENABLE_WALLPAPER"           : "Enable wallpaper:",
         "FIELD_HEADER_GATEWAY_DOMAIN"   : "Domain:",
         "FIELD_HEADER_GATEWAY_HOSTNAME" : "Hostname:",
@@ -497,6 +501,7 @@
         "FIELD_HEADER_READ_ONLY"      : "Read-only:",
         "FIELD_HEADER_RECORDING_EXCLUDE_MOUSE"  : "Exclude mouse:",
         "FIELD_HEADER_RECORDING_EXCLUDE_OUTPUT" : "Exclude graphics/streams:",
+        "FIELD_HEADER_RECORDING_EXCLUDE_TOUCH"  : "Exclude touch events:",
         "FIELD_HEADER_RECORDING_INCLUDE_KEYS"   : "Include key events:",
         "FIELD_HEADER_RECORDING_NAME" : "Recording name:",
         "FIELD_HEADER_RECORDING_PATH" : "Recording path:",

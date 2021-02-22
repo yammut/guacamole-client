@@ -231,6 +231,10 @@ END
         set_property "mysql-ssl-client-password" "$MYSQL_SSL_CLIENT_PASSWORD"
     fi
 
+    set_optional_property             \
+        "mysql-auto-create-accounts"  \
+        "$MYSQL_AUTO_CREATE_ACCOUNTS"
+
     # Add required .jar files to GUACAMOLE_LIB and GUACAMOLE_EXT
     ln -s /opt/guacamole/mysql/mysql-connector-*.jar "$GUACAMOLE_LIB"
     ln -s /opt/guacamole/mysql/guacamole-auth-*.jar "$GUACAMOLE_EXT"
@@ -388,6 +392,10 @@ END
     elif [ -n "$POSTGRES_SSL_KEY_PASSWORD" ]; then
         set_property "postgresql-ssl-key-password" "$POSTGRES_SSL_KEY_PASSWORD"
     fi
+
+    set_optional_property                  \
+        "postgresql-auto-create-accounts"  \
+        "$POSTGRESQL_AUTO_CREATE_ACCOUNTS"
 
     # Add required .jar files to GUACAMOLE_LIB and GUACAMOLE_EXT
     ln -s /opt/guacamole/postgresql/postgresql-*.jar "$GUACAMOLE_LIB"
@@ -576,6 +584,7 @@ END
     set_property          "openid-client-id"                 "$OPENID_CLIENT_ID"
     set_property          "openid-redirect-uri"              "$OPENID_REDIRECT_URI"
     set_optional_property "openid-username-claim-type"       "$OPENID_USERNAME_CLAIM_TYPE"
+    set_optional_property "openid-max-token-validity"        "$OPENID_MAX_TOKEN_VALIDITY"
 
     # Add required .jar files to GUACAMOLE_EXT
     # "1-{}" make it sorted as a first provider (only authentication)
@@ -678,9 +687,26 @@ END
     set_property            "cas-authorization-endpoint"       "$CAS_AUTHORIZATION_ENDPOINT"
     set_property            "cas-redirect-uri"                 "$CAS_REDIRECT_URI"
     set_optional_property   "cas-clearpass-key"                "$CAS_CLEARPASS_KEY"
+    set_optional_property   "cas-group-attribute"              "$CAS_GROUP_ATTRIBUTE"
+    set_optional_property   "cas-group-format"                 "$CAS_GROUP_FORMAT"
+    set_optional_property   "cas-group-ldap-base-dn"           "$CAS_GROUP_LDAP_BASE_DN"
+    set_optional_property   "cas-group-ldap-attribute"         "$CAS_GROUP_LDAP_ATTRIBUTE"
 
     # Add required .jar files to GUACAMOLE_EXT
     ln -s /opt/guacamole/cas/guacamole-auth-*.jar   "$GUACAMOLE_EXT"
+}
+
+##
+## Adds properties to guacamole.properties which configure the json
+## authentication provider.
+##
+associate_json() {
+    # Update config file
+    set_property          "json-secret-key"        "$JSON_SECRET_KEY"
+    set_optional_property "json-trusted-networks"  "$JSON_TRUSTED_NETWORKS"
+
+    # Add required .jar files to GUACAMOLE_EXT
+    ln -s /opt/guacamole/json/guacamole-auth-*.jar "$GUACAMOLE_EXT"
 }
 
 ##
@@ -689,13 +715,18 @@ END
 ## last function run within the script.
 ##
 start_guacamole() {
-
     # Turn on the Remote IP Valve
     sed -i 's|^\(\(\s\)\+\)</Host>|\1\2\2<Valve className="org.apache.catalina.valves.RemoteIpValve"\n\1\2\2\1\2internalProxies="172.16.2.2" />\n\n\1</Host>|' /usr/local/tomcat/conf/server.xml
 
+    # User-only writable CATALINA_BASE
+    export CATALINA_BASE=$HOME/tomcat
+    for dir in logs temp webapps work; do
+        mkdir -p $CATALINA_BASE/$dir
+    done
+    cp -R /usr/local/tomcat/conf $CATALINA_BASE
+
     # Install webapp
-    rm -Rf /usr/local/tomcat/webapps/${WEBAPP_CONTEXT:-guacamole}
-    ln -sf /opt/guacamole/guacamole.war /usr/local/tomcat/webapps/${WEBAPP_CONTEXT:-guacamole}.war
+    ln -sf /opt/guacamole/guacamole.war $CATALINA_BASE/webapps/${WEBAPP_CONTEXT:-guacamole}.war
 
     # Start tomcat
     cd /usr/local/tomcat
@@ -839,6 +870,11 @@ fi
 # Use CAS if specified.
 if [ -n "$CAS_AUTHORIZATION_ENDPOINT" ]; then
     associate_cas
+fi
+
+# Use json-auth if specified.
+if [ -n "$JSON_SECRET_KEY" ]; then
+    associate_json
 fi
 
 # Set logback level if specified
